@@ -22,6 +22,7 @@ export class AwardsService {
       fs.createReadStream(csvFilePath)
         .pipe(csv({ separator: ';' }))
         .on('data', (data) => {
+          data.winner = data.winner === 'yes' ? true : false;
           movies.push(data);
         })
         .on('end', async () => {
@@ -35,31 +36,45 @@ export class AwardsService {
     }
   }
 
+  async getAll() {
+    return this.moviesRepository.find();
+  }
+
   async getWinners() {
     return this.moviesRepository.find({ where: { winner: true } });
   }
 
   async getProducerIntervals() {
-    const winners = await this.getWinners();
-    const producersMap = new Map();
+    const winnersMovies = await this.getWinners();
+    const producersMap = new Map<string, number[]>();
 
-    winners.forEach((winner) => {
-      winner.producers.split(',').forEach((producer) => {
-        producer = producer.trim();
+    // Iterar sobre os filmes vencedores para processar os produtores
+    for (const movie of winnersMovies) {
+      // Dividir os produtores por vírgula e remover espaços extras
+      const producersList = movie.producers
+        .split(',')
+        .map((producer) => producer.trim());
+
+      // Iterar sobre cada produtor e adicionar os anos de vitória no mapa
+      for (const producer of producersList) {
         if (!producersMap.has(producer)) {
           producersMap.set(producer, []);
         }
-        producersMap.get(producer).push(winner.year);
-      });
-    });
+        producersMap.get(producer).push(movie.year);
+      }
+    }
 
     const minIntervals = [];
     const maxIntervals = [];
 
     producersMap.forEach((years, producer) => {
-      years.sort();
+      years.sort((a, b) => a - b); // Ordenar os anos de vitória
+
       for (let i = 1; i < years.length; i++) {
+        // Calcula o intervalo entre o ano atual e o ano anterior
         const interval = years[i] - years[i - 1];
+
+        // Cria um objeto que representa o produtor e os detalhes do intervalo
         const result = {
           producer,
           interval,
@@ -67,18 +82,20 @@ export class AwardsService {
           followingWin: years[i],
         };
 
+        // Verifica se a lista de menores intervalos está vazia ou se o intervalo atual é menor que o menor intervalo atual
         if (minIntervals.length === 0 || interval < minIntervals[0].interval) {
-          minIntervals.length = 0;
-          minIntervals.push(result);
+          minIntervals.length = 0; // Limpa a lista, pois encontramos um novo menor intervalo
+          minIntervals.push(result); // Adiciona o novo menor intervalo à lista
         } else if (interval === minIntervals[0].interval) {
-          minIntervals.push(result);
+          minIntervals.push(result); // Se o intervalo for igual ao menor já encontrado, adiciona à lista
         }
 
+        // Verifica se a lista de maiores intervalos está vazia ou se o intervalo atual é maior que o maior intervalo atual
         if (maxIntervals.length === 0 || interval > maxIntervals[0].interval) {
-          maxIntervals.length = 0;
-          maxIntervals.push(result);
+          maxIntervals.length = 0; // Limpa a lista, pois encontramos um novo maior intervalo
+          maxIntervals.push(result); // Adiciona o novo maior intervalo à lista
         } else if (interval === maxIntervals[0].interval) {
-          maxIntervals.push(result);
+          maxIntervals.push(result); // Se o intervalo for igual ao maior já encontrado, adiciona à lista
         }
       }
     });
