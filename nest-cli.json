@@ -7,8 +7,7 @@
     "watchAssets": true,
     "assets": [
       {
-        "include": "../shared/**/*",
-        "watchAssets": true
+        "include": "**/*.csv"
       }
     ]
   }

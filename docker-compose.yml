@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  award:
+    build: .
+    container_name: golden-raspberry-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - .:/awards
+    command: npm run start

@@ -22,14 +22,7 @@ export class AwardsService {
       fs.createReadStream(csvFilePath)
         .pipe(csv({ separator: ';' }))
         .on('data', (data) => {
-          movies.push({
-            id: data.id,
-            year: +data.year,
-            title: data.title,
-            studios: data.studios,
-            producers: data.producers,
-            winner: data.winner === 'yes',
-          });
+          movies.push(data);
         })
         .on('end', async () => {
           await this.moviesRepository.save(movies);
@@ -42,12 +35,12 @@ export class AwardsService {
     }
   }
 
-  async getAllWinners() {
+  async getWinners() {
     return this.moviesRepository.find({ where: { winner: true } });
   }
 
   async getProducerIntervals() {
-    const winners = await this.getAllWinners();
+    const winners = await this.getWinners();
     const producersMap = new Map();
 
     winners.forEach((winner) => {

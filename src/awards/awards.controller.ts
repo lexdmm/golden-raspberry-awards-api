@@ -5,8 +5,13 @@ import { AwardsService } from './awards.service';
 export class AwardsController {
   constructor(private readonly awardsService: AwardsService) {}
 
-  @Get('producers-intervals')
-  async getProducersIntervals() {
+  @Get('producers')
+  async getProducers() {
     return this.awardsService.getProducerIntervals();
+  }
+
+  @Get('winners')
+  async getWinners() {
+    return await this.awardsService.getWinners();
   }
 }
