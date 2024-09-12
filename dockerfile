@@ -1,23 +1,17 @@
-# Usando imagem do Node.js
 FROM node:21-alpine
 
-# Defina o diretório de trabalho
 WORKDIR /awards
 
-# Copie o package.json e o package-lock.json
+RUN npm install -g npm@latest
+
 COPY package*.json ./
 
-# Instale as dependências
-RUN yarn install yarn
+RUN yarn install --frozen-lockfile
 
-# Instale as dependências
-RUN yarn install
-
-# Copie o código da aplicação
 COPY . .
 
-# Exponha a porta
 EXPOSE 3000
 
-# Comando para iniciar a aplicação
-CMD ["yarn", "run", "start"]
+RUN yarn cache clean
+
+CMD ["yarn", "run", "start:dev"]

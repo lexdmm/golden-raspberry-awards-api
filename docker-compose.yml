@@ -1,12 +1,10 @@
-version: '3.8'
+version: '3.9'
 services:
   award:
     build: .
-    container_name: golden-raspberry-api
+    container_name: golden-raspberry-awards-api
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=production
     volumes:
       - .:/awards
-    command: npm run start
+    command: yarn run start:dev
