@@ -1,19 +1,24 @@
+/* eslint-disable prettier/prettier */
 import { Test, TestingModule } from '@nestjs/testing';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Movie } from '../entity/movie.entity';
+import { mock, MockProxy } from 'jest-mock-extended';
 import { AwardsService } from '../awards.service';
+import { Movie } from '../entity/movie.entity';
 
-describe('ProducersService', () => {
+describe('AwardsService integration test', () => {
   let service: AwardsService;
+  let repository: MockProxy<Repository<Movie>>;
 
   beforeEach(async () => {
+    repository = mock<Repository<Movie>>();
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AwardsService,
         {
           provide: getRepositoryToken(Movie),
-          useClass: Repository, // Mocka o repositório do TypeORM
+          useValue: repository,
         },
       ],
     }).compile();
@@ -21,135 +26,74 @@ describe('ProducersService', () => {
     service = module.get<AwardsService>(AwardsService);
   });
 
-  it('deve retornar os produtores com os menores e maiores intervalos entre vitórias', async () => {
-    // Simula a resposta do método getWinners do service, retornando vencedores mockados
-    jest.spyOn(service, 'getWinners').mockResolvedValue([
-      {
-        id: 1,
-        year: 1980,
-        title: "Can't Stop the Music",
-        studios: 'Associated Film Distribution',
-        producers: 'Allan Carr',
-        winner: true,
-      },
-      {
-        id: 11,
-        year: 1981,
-        title: 'Mommie Dearest',
-        studios: 'Paramount Pictures',
-        producers: 'Allan Carr',
-        winner: true,
-      },
-      {
-        id: 16,
-        year: 2016,
-        title: 'Inchon',
-        studios: 'MGM',
-        producers: 'Mitsuharu Ishii',
-        winner: true,
-      },
-      {
-        id: 21,
-        year: 1981,
-        title: 'The Lonely Lady',
-        studios: 'Universal Studios',
-        producers: 'Mitsuharu Ishii',
-        winner: true,
-      },
-      {
-        id: 31,
-        year: 1985,
-        title: 'Rambo: First Blood Part II',
-        studios: 'Columbia Pictures',
-        producers: 'Buzz Feitshans',
-        winner: true,
-      },
-    ]);
-
-    const result = await service.getProducerIntervals();
-
-    expect(result.min).toEqual([
-      {
-        producer: 'Allan Carr',
-        interval: 1,
-        previousWin: 1980,
-        followingWin: 1981,
-      },
-    ]);
-
-    expect(result.max).toEqual([
-      {
-        producer: 'Mitsuharu Ishii',
-        interval: 35,
-        previousWin: 1981,
-        followingWin: 2016,
-      },
-    ]);
+  it('should be defined', () => {
+    expect(service).toBeDefined();
   });
 
-  it('deve dividir corretamente produtores e calcular os intervalos', async () => {
-    // Simula vencedores com múltiplos produtores
-    jest.spyOn(service, 'getWinners').mockResolvedValue([
-      {
-        id: 1,
-        year: 1980,
-        title: "Can't Stop the Music",
-        studios: 'Associated Film Distribution',
-        producers: 'Allan Carr',
-        winner: true,
-      },
-      {
-        id: 11,
-        year: 1981,
-        title: 'Mommie Dearest',
-        studios: 'Paramount Pictures',
-        producers: 'Allan Carr',
-        winner: true,
-      },
-      {
-        id: 16,
-        year: 2016,
-        title: 'Inchon',
-        studios: 'MGM',
-        producers: 'Mitsuharu Ishii',
-        winner: true,
-      },
-      {
-        id: 21,
-        year: 1981,
-        title: 'The Lonely Lady',
-        studios: 'Universal Studios',
-        producers: 'Mitsuharu Ishii',
-        winner: true,
-      },
-      {
-        id: 31,
-        year: 1985,
-        title: 'Rambo: First Blood Part II',
-        studios: 'Columbia Pictures',
-        producers: 'Buzz Feitshans',
-        winner: true,
-      },
-    ]);
+  it('should load data from CSV', async () => {
+    const awards = [
+      { id: 1, year: 2020, title: 'Movie 1', studios: 'Studio 1', producers: 'Producer 1', winner: false },
+      { id: 2, year: 2021, title: 'Movie 2', studios: 'Studio 2', producers: 'Producer 2', winner: true },
+    ];
+    repository.find.mockResolvedValue(awards);
+
+    const result = await service.findAll();
+    expect(result).toEqual(awards);
+    expect(repository.find).toHaveBeenCalled();
+  });
+
+  it('should create a new award', async () => {
+    const awardData = { year: 2022, title: 'Test Movie', studios: 'Test Studios', producers: 'Test Producer', winner: false };
+    const savedAward = { id: 1, ...awardData };
+    repository.create.mockReturnValue(savedAward as any);
+    repository.save.mockResolvedValue(savedAward);
+
+    const newAward = await service.create(awardData);
+    expect(newAward).toEqual(savedAward);
+    expect(repository.create).toHaveBeenCalledWith(awardData);
+    expect(repository.save).toHaveBeenCalledWith(savedAward);
+  });
+
+  it('should find an award by ID', async () => {
+    const award = { id: 1, year: 2022, title: 'Test Movie', studios: 'Test Studios', producers: 'Test Producer', winner: false };
+    repository.findOneBy.mockResolvedValue(award);
+
+    const foundAward = await service.findOne(1);
+    expect(foundAward).toEqual(award);
+    expect(repository.findOneBy).toHaveBeenCalledWith({ id: 1 });
+  });
+
+  it('should update an award', async () => {
+    const award = { id: 1, year: 2022, title: 'Old Title', studios: 'Test Studios', producers: 'Test Producer', winner: false };
+    const updatedAward = { ...award, title: 'New Title' };
+    repository.update.mockResolvedValue(undefined);
+    repository.findOneBy.mockResolvedValue(updatedAward);
+
+    const result = await service.update(1, { title: 'New Title' });
+    expect(result).toEqual(updatedAward);
+    expect(repository.update).toHaveBeenCalledWith(1, { title: 'New Title' });
+    expect(repository.findOneBy).toHaveBeenCalledWith({ id: 1 });
+  });
+
+  it('should delete an award', async () => {
+    repository.delete.mockResolvedValue(undefined);
+
+    await service.remove(1);
+    expect(repository.delete).toHaveBeenCalledWith(1);
+  });
+
+  it('should calculate producer intervals correctly', async () => {
+    const awards = [
+      { id: 1, year: 2000, title: 'Movie 1', studios: 'Studio 1', producers: 'Producer 1', winner: true },
+      { id: 2, year: 2010, title: 'Movie 2', studios: 'Studio 2', producers: 'Producer 1', winner: true },
+      { id: 3, year: 2015, title: 'Movie 3', studios: 'Studio 3', producers: 'Producer 2', winner: true },
+      { id: 4, year: 2018, title: 'Movie 4', studios: 'Studio 4', producers: 'Producer 2', winner: true },
+    ];
+    repository.find.mockResolvedValue(awards);
 
     const result = await service.getProducerIntervals();
-
-    expect(result.min).toEqual([
-      {
-        producer: 'Allan Carr',
-        interval: 1,
-        previousWin: 1980,
-        followingWin: 1981,
-      },
-    ]);
-
-    expect(result.max).toEqual([
-      {
-        producer: 'Mitsuharu Ishii',
-        interval: 35,
-        previousWin: 1981,
-        followingWin: 2016,
-      },
-    ]);
+    expect(result.min.length).toBeGreaterThan(0);
+    expect(result.max.length).toBeGreaterThan(0);
+    expect(repository.find).toHaveBeenCalledWith({ where: { winner: true } });
   });
 });

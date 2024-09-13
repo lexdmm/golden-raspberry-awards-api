@@ -1,79 +1,85 @@
+/* eslint-disable prettier/prettier */
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { AwardsService } from '../awards.service';
-import { AwardsController } from '../awards.controller';
+import { Movie } from '../entity/movie.entity';
+import { getRepositoryToken, TypeOrmModule } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { AwardsModule } from '../awards.module';
 
-describe('ProducersController teste de integração', () => {
+describe('Controller HTTP teste resultado de intervalos', () => {
   let app: INestApplication;
-  const producersService = { getProducerIntervals: jest.fn() }; // Mock do Service
+  let repository: Repository<Movie>;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      controllers: [AwardsController],
-      providers: [
-        {
-          provide: AwardsService,
-          useValue: producersService, // Usa o mock do service
-        },
+      imports: [
+        TypeOrmModule.forRoot({
+          type: 'sqlite',
+          database: ':memory:',
+          entities: [Movie],
+          synchronize: true,
+        }),
+        TypeOrmModule.forFeature([Movie]),
+        AwardsModule,
       ],
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    repository = moduleFixture.get<Repository<Movie>>(
+      getRepositoryToken(Movie),
+    );
+
     await app.init();
   });
 
-  afterAll(async () => {
-    await app.close(); // Fecha a aplicação após os testes
+  // Popula a base de dados em memória com alguns exemplos de prêmios
+  beforeEach(async () => {
+    await repository.save([
+      { year: 1980, title: "Can't Stop the Music", studios: 'Associated Film Distribution', producers: 'Allan Carr', winner: true },
+      { year: 1981, title: 'Mommie Dearest', studios: 'Paramount Pictures', producers: 'Frank Yablans', winner: true },
+      { year: 1980, title: 'Xanadu', studios: 'Universal Studios', producers: 'Lawrence Gordon, John Derek', winner: false },
+      { year: 1981, title: 'Endless Love', studios: 'Universal Studios, PolyGram', producers: 'Dyson Lovell', winner: false },
+    ]);
   });
 
-  it('/awards/producers (GET) - Deve retornar os produtores com os menores e maiores intervalos entre vitórias', async () => {
-    producersService.getProducerIntervals.mockResolvedValue({
-      min: [
-        {
-          producer: 'Bo Derek',
-          interval: 0,
-          previousWin: 1984,
-          followingWin: 1984,
-        },
-      ],
-      max: [
-        {
-          producer: 'Allan Carr',
-          interval: 4,
-          previousWin: 1980,
-          followingWin: 1984,
-        },
-      ],
-    });
+  // Limpa a base de dados em memória após cada teste
+  afterEach(async () => {
+    await repository.clear();
+  });
 
-    return request(app.getHttpServer())
-      .get('/awards/producers')
-      .expect(200)
-      .expect((res) => {
-        // Valida a estrutura de retorno do JSON
-        expect(res.body).toHaveProperty('min');
-        expect(res.body).toHaveProperty('max');
+  afterAll(async () => {
+    await app.close();
+  });
 
-        // Verifica que o intervalo mínimo retornado está correto
-        expect(res.body.min).toEqual([
-          {
-            producer: 'Bo Derek',
-            interval: 0,
-            previousWin: 1984,
-            followingWin: 1984,
-          },
-        ]);
+  it('/awards/producer-interval (GET)', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/awards/producer-interval')
+      .expect(200);
 
-        // Verifica que o intervalo máximo retornado está correto
-        expect(res.body.max).toEqual([
-          {
-            producer: 'Allan Carr',
-            interval: 4,
-            previousWin: 1980,
-            followingWin: 1984,
-          },
-        ]);
-      });
+    // Espera-se que a resposta tenha as chaves min e max com os dados adequados
+    expect(response.body).toHaveProperty('min');
+    expect(response.body).toHaveProperty('max');
+
+    // Checando se os dados esperados estão corretos (ajuste conforme o método getProducersInterval())
+    const { min, max } = response.body;
+
+    expect(min).toEqual([
+      {
+        producer: 'Allan Carr',
+        interval: 1,
+        previousWin: 1980,
+        followingWin: 1981,
+      },
+    ]);
+
+    expect(max).toEqual([
+      {
+        producer: 'Allan Carr',
+        interval: 1,
+        previousWin: 1980,
+        followingWin: 1981,
+      },
+    ]);
   });
 });
