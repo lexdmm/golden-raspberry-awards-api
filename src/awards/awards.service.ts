@@ -1,4 +1,9 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as fs from 'fs';
@@ -7,6 +12,7 @@ import * as csv from 'csv-parser';
 import { Movie } from './entity/movie.entity';
 import { CreateAwardDto } from './dto/create-award.dto';
 import { UpdateAwardDto } from './dto/update-award.dto';
+import { ProducerIntervalResponseDto } from './dto/producer-interval-response.dto';
 
 const PATH_CSV = '../shared/movielist.csv';
 
@@ -38,21 +44,38 @@ export class AwardsService {
     }
   }
 
-  async create(createAwardDto: CreateAwardDto): Promise<Movie> {
+  public async create(createAwardDto: CreateAwardDto): Promise<Movie> {
     const award = this.moviesRepository.create(createAwardDto);
     return await this.moviesRepository.save(award);
   }
 
-  async findAll(): Promise<Movie[]> {
-    return await this.moviesRepository.find();
+  public async findAll(): Promise<Movie[]> {
+    try {
+      return await this.moviesRepository.find();
+    } catch (error) {
+      throw new InternalServerErrorException(
+        `An error occurred while retrieving awards: ${error.message}`,
+      );
+    }
   }
 
-  async findOne(id: number): Promise<Movie> {
-    return await this.moviesRepository.findOneBy({ id });
+  public async findOne(id: number): Promise<Movie> {
+    const award = await this.moviesRepository.findOneBy({ id });
+    if (!award) {
+      throw new NotFoundException(`Award with ID ${id} not found`);
+    }
+    return award;
   }
 
-  async getProducerIntervals() {
-    const winnersMovies = await this.getWinners();
+  public async getProducerIntervals(): Promise<ProducerIntervalResponseDto> {
+    const winnersMovies: Movie[] = await this.moviesRepository.find({
+      where: { winner: true },
+    });
+
+    if (winnersMovies.length === 0) {
+      throw new NotFoundException('No awards found');
+    }
+
     const producersMap = new Map<string, number[]>();
 
     // Iterar sobre os filmes vencedores para processar os produtores
@@ -89,20 +112,22 @@ export class AwardsService {
           followingWin: years[i],
         };
 
-        // Verifica se a lista de menores intervalos está vazia ou se o intervalo atual é menor que o menor intervalo atual
+        // valida se a lista de menores intervalos está vazia ou se o intervalo atual é menor que o menor intervalo atual
         if (minIntervals.length === 0 || interval < minIntervals[0].interval) {
           minIntervals.length = 0; // Limpa a lista, pois encontramos um novo menor intervalo
-          minIntervals.push(result); // Adiciona o novo menor intervalo à lista
+          minIntervals.push(result); // Adiciona o novo MAIOR intervalo à lista
         } else if (interval === minIntervals[0].interval) {
-          minIntervals.push(result); // Se o intervalo for igual ao menor já encontrado, adiciona à lista
+          // Se o intervalo for igual ao MENOR já encontrado, adiciona à lista
+          minIntervals.push(result);
         }
 
-        // Verifica se a lista de maiores intervalos está vazia ou se o intervalo atual é maior que o maior intervalo atual
+        // Verifica se essa lista maldita, que não fica certa, de maiores intervalos está
+        // vazia ou se o intervalo atual é maior que o maior intervalo atual
         if (maxIntervals.length === 0 || interval > maxIntervals[0].interval) {
-          maxIntervals.length = 0; // Limpa a lista, pois encontramos um novo maior intervalo
-          maxIntervals.push(result); // Adiciona o novo maior intervalo à lista
+          maxIntervals.length = 0;
+          maxIntervals.push(result); // Adiciona o novo MENOR intervalo à lista
         } else if (interval === maxIntervals[0].interval) {
-          maxIntervals.push(result); // Se o intervalo for igual ao maior já encontrado, adiciona à lista
+          maxIntervals.push(result); // Se o intervalo for igual ao MAIOR já encontrado, adiciona à lista
         }
       }
     });
@@ -110,16 +135,22 @@ export class AwardsService {
     return { min: minIntervals, max: maxIntervals };
   }
 
-  async update(id: number, updateAwardDto: UpdateAwardDto): Promise<Movie> {
+  public async update(
+    id: number,
+    updateAwardDto: UpdateAwardDto,
+  ): Promise<Movie> {
+    const award = await this.moviesRepository.findOneBy({ id });
+    if (!award) {
+      throw new NotFoundException(`Award with ID ${id} not found`);
+    }
     await this.moviesRepository.update(id, updateAwardDto);
-    return this.findOne(id);
+    return await this.moviesRepository.findOneBy({ id });
   }
 
   async remove(id: number): Promise<void> {
-    await this.moviesRepository.delete(id);
-  }
-
-  private async getWinners() {
-    return await this.moviesRepository.find({ where: { winner: true } });
+    const result = await this.moviesRepository.delete(id);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Award with ID ${id} not found`);
+    }
   }
 }
