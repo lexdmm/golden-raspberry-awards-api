@@ -5,6 +5,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as csv from 'csv-parser';
 import { Movie } from './entity/movie.entity';
+import { CreateAwardDto } from './dto/create-award.dto';
+import { UpdateAwardDto } from './dto/update-award.dto';
 
 const PATH_CSV = '../shared/movielist.csv';
 
@@ -36,12 +38,17 @@ export class AwardsService {
     }
   }
 
-  async getAll() {
-    return this.moviesRepository.find();
+  async create(createAwardDto: CreateAwardDto): Promise<Movie> {
+    const award = this.moviesRepository.create(createAwardDto);
+    return await this.moviesRepository.save(award);
   }
 
-  async getWinners() {
-    return this.moviesRepository.find({ where: { winner: true } });
+  async findAll(): Promise<Movie[]> {
+    return await this.moviesRepository.find();
+  }
+
+  async findOne(id: number): Promise<Movie> {
+    return await this.moviesRepository.findOneBy({ id });
   }
 
   async getProducerIntervals() {
@@ -101,5 +108,18 @@ export class AwardsService {
     });
 
     return { min: minIntervals, max: maxIntervals };
+  }
+
+  async update(id: number, updateAwardDto: UpdateAwardDto): Promise<Movie> {
+    await this.moviesRepository.update(id, updateAwardDto);
+    return this.findOne(id);
+  }
+
+  async remove(id: number): Promise<void> {
+    await this.moviesRepository.delete(id);
+  }
+
+  private async getWinners() {
+    return await this.moviesRepository.find({ where: { winner: true } });
   }
 }
