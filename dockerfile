@@ -1,17 +1,19 @@
-FROM node:21-alpine
+FROM node:latest
 
-WORKDIR /awards
+WORKDIR /app
 
-RUN npm install -g npm@latest
+RUN mkdir -p /app
 
-COPY package*.json ./
+COPY package*.json /app/
 
-RUN yarn install --frozen-lockfile
+RUN yarn cache clean \
+  rm node_modules/ \
+  yarn install --frozen-lockfile
 
 COPY . .
 
+RUN yarn install
+
 EXPOSE 3000
 
-RUN yarn cache clean
-
-CMD ["yarn", "run", "start:dev"]
+CMD ["yarn", "start:dev"]
