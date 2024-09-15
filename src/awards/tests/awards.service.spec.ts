@@ -7,7 +7,7 @@ import { Movie } from '../entity/movie.entity';
 import { MockType, repositoryMockFactory } from './mocks/repository.mock';
 import { InternalServerErrorException, NotFoundException } from '@nestjs/common';
 
-describe('AwardsService integration test', () => {
+describe('AwardsService test', () => {
   let service: AwardsService;
   let repository: MockType<Repository<Movie>>;
 

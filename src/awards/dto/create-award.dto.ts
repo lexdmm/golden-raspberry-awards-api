@@ -26,7 +26,7 @@ export class CreateAwardDto {
   @ApiProperty({
     description:
       'Os produtores do filme, separados por vírgula, se houver mais de um',
-    example: 'Allan Carr',
+    example: 'Allan Carr, Cecelia Ahern',
   })
   @IsString()
   producers: string;
