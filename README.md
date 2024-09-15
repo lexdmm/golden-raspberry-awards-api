@@ -58,7 +58,35 @@ src/
 │   ├── entities/
 │   │   └── movie.entity.ts
 │   └── tests/
-│       └── awards.controller.spec.ts
+│       ├── mocks/
+│           └── repository.mock
+│       └── awards.integration.spec.ts
+        └── awards.service.spec.ts
 └── shared/
     └── movielist.csv
+```
+
+## Como rodar
+Para rodar o projeto: 
+```
+docker-compose up -d
+```
+
+Em seguida basta subir no swagger para testar os serviços do endpoint awards em:
+[http://localhost:3000/api](http://localhost:3000/api)
+
+Para parar o projeto destruir os containers:
+```
+docker-compose down
+```
+
+### Executar os Testes
+Para rodar os testes: 
+```
+yarn test
+```
+
+Para rodar os testes com cobertura de código: 
+```
+yarn test:cov
 ```
