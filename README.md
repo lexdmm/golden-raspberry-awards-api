@@ -3,7 +3,7 @@
 Desenvolva uma API RESTful para possibilitar a leitura da lista de indicados e vencedores da categoria Pior Filme do Golden Raspberry Awards.
 
 Requisito do sistema:
-1. Ler o arquivo CSV abaixo. Ele tem a lista dos filmes com seus dados que devem ser e inseridos em uma base de dados ao iniciar a
+1. Ler o arquivo CSV. Ele tem a lista dos filmes com seus dados que devem ser e inseridos em uma base de dados ao iniciar a
 aplicação (Pasta *src/shared/movielist.csv*).
 
 Requisitos da API:
@@ -60,8 +60,8 @@ src/
 │   └── tests/
 │       ├── mocks/
 │           └── repository.mock
-│       └── awards.integration.spec.ts
-        └── awards.service.spec.ts
+│       └── awards.integration.spec.ts // testes integrados
+        └── awards.service.spec.ts // testes unitários
 └── shared/
     └── movielist.csv
 ```
