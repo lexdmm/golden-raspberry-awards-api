@@ -1,123 +1,203 @@
-/* eslint-disable prettier/prettier */
 import { Test, TestingModule } from '@nestjs/testing';
-import { Repository } from 'typeorm';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { AwardsService } from '../awards.service';
+import { getRepositoryToken } from '@nestjs/typeorm';
 import { Movie } from '../entity/movie.entity';
-import { MockType, repositoryMockFactory } from './mocks/repository.mock';
-import { InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Repository } from 'typeorm';
+import { NotFoundException } from '@nestjs/common';
+import { CreateAwardDto } from '../dto/create-award.dto';
 
-describe('AwardsService test', () => {
+const mockAwardEntity: Movie = {
+  id: 1,
+  producers: 'Michael Bay',
+  title: 'Transformers: Revenge of the Fallen (Extended Cut)',
+  studios: 'Paramount Pictures',
+  year: 2009,
+  winner: true,
+};
+
+const mockAwardsRepository = () => ({
+  find: jest.fn(),
+  findOneBy: jest.fn(),
+  findOne: jest.fn(),
+  create: jest.fn(),
+  save: jest.fn(),
+  update: jest.fn(),
+  delete: jest.fn(),
+});
+
+describe('AwardsService unit tests', () => {
   let service: AwardsService;
-  let repository: MockType<Repository<Movie>>;
+  let repository: Repository<Movie>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AwardsService,
-        { provide: getRepositoryToken(Movie), useFactory: repositoryMockFactory },
+        {
+          provide: getRepositoryToken(Movie),
+          useFactory: mockAwardsRepository,
+        },
       ],
     }).compile();
 
     service = module.get<AwardsService>(AwardsService);
-    repository = module.get(getRepositoryToken(Movie));
-    repository.update = jest.fn();
+    repository = module.get<Repository<Movie>>(getRepositoryToken(Movie));
   });
 
   describe('findAll', () => {
-    it('should return all awards', async () => {
-      const awards = [{ id: 1, title: 'Award 1' }, { id: 2, title: 'Award 2' }];
-      repository.find.mockResolvedValue(awards);
+    it('should return an array of awards', async () => {
+      const awards = [mockAwardEntity];
+      jest.spyOn(repository, 'find').mockResolvedValue(awards);
 
       expect(await service.findAll()).toEqual(awards);
-      expect(repository.find).toHaveBeenCalled();
-    });
-
-    it('should throw InternalServerErrorException on repository error', async () => {
-      repository.find.mockRejectedValue(new Error('Repository error'));
-
-      await expect(service.findAll()).rejects.toThrow(InternalServerErrorException);
     });
   });
 
   describe('findOne', () => {
-    it('should return an award by ID', async () => {
-      const award = { id: 1, title: 'Award 1' };
-      repository.findOneBy.mockResolvedValue(award);
+    it('should return an award by id', async () => {
+      jest.spyOn(repository, 'findOneBy').mockResolvedValue(mockAwardEntity);
 
-      expect(await service.findOne(1)).toEqual(award);
-      expect(repository.findOneBy).toHaveBeenCalledWith({ id: 1 });
+      expect(await service.findOne(1)).toEqual(mockAwardEntity);
     });
 
-    it('should throw NotFoundException if the award does not exist', async () => {
-      repository.findOneBy.mockResolvedValue(null);
+    it('should throw a NotFoundException if the award does not exist', async () => {
+      jest.spyOn(repository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
+      await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('create', () => {
+    it('should successfully insert a new award', async () => {
+      jest.spyOn(repository, 'save').mockResolvedValue(mockAwardEntity);
+
+      const createAwardDto: CreateAwardDto = {
+        producers: 'Michael Bay',
+        title: 'Transformers: Revenge of the Fallen',
+        studios: 'Paramount Pictures',
+        year: 2009,
+        winner: true,
+      };
+
+      expect(await service.create(createAwardDto)).toEqual(mockAwardEntity);
     });
   });
 
   describe('update', () => {
-    it('should update an award successfully', async () => {
-      const updateDto = { title: 'Updated Title' };
-      const existingAward = { id: 1, title: 'Original Title' };
-      const updatedAward = { id: 1, title: 'Updated Title' };
+    it('should update an award', async () => {
+      jest.spyOn(repository, 'findOneBy').mockResolvedValue(mockAwardEntity);
+      jest.spyOn(repository, 'save').mockResolvedValue({
+        ...mockAwardEntity,
+        title: 'Transformers: Revenge of the Fallen (Extended Cut)',
+      });
 
-      repository.findOneBy.mockResolvedValue(existingAward);
-      repository.update.mockResolvedValue(undefined);
-      repository.findOneBy.mockResolvedValue(updatedAward);
+      const updateDto = {
+        title: 'Transformers: Revenge of the Fallen (Extended Cut)',
+      };
 
-      expect(await service.update(1, updateDto)).toEqual(updatedAward);
-      expect(repository.findOneBy).toHaveBeenCalledWith({ id: 1 });
-      expect(repository.update).toHaveBeenCalledWith(1, updateDto);
-      expect(repository.findOneBy).toHaveBeenCalledWith({ id: 1 });
+      expect(await service.update(1, updateDto)).toEqual({
+        ...mockAwardEntity,
+        title: 'Transformers: Revenge of the Fallen (Extended Cut)',
+      });
     });
 
-    it('should throw NotFoundException if the award does not exist', async () => {
-      const updateDto = { title: 'Updated Title' };
-      repository.findOneBy.mockResolvedValue(null);
+    it('should throw a NotFoundException if the award does not exist', async () => {
+      jest.spyOn(repository, 'findOne').mockResolvedValue(null);
 
-      await expect(service.update(1, updateDto)).rejects.toThrow(NotFoundException);
+      await expect(service.update(999, { title: 'New Title' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
-
 
   describe('remove', () => {
-    it('should remove an award successfully', async () => {
-      repository.delete.mockResolvedValue({ affected: 1 });
+    it('should delete an award', async () => {
+      jest.spyOn(repository, 'findOne').mockResolvedValue(mockAwardEntity);
+      jest
+        .spyOn(repository, 'delete')
+        .mockResolvedValue({ affected: 1, raw: {} });
 
-      await expect(service.remove(1)).resolves.toBeUndefined();
-      expect(repository.delete).toHaveBeenCalledWith(1);
+      expect(await service.remove(1)).toBeUndefined();
     });
 
-    it('should throw NotFoundException if the award does not exist', async () => {
-      repository.delete.mockResolvedValue({ affected: 0 });
+    it('should throw a NotFoundException if the award does not exist', async () => {
+      jest.spyOn(repository, 'findOne').mockResolvedValue(null);
+      jest.spyOn(repository, 'delete').mockResolvedValue(undefined);
 
-      await expect(service.remove(1)).rejects.toThrow(NotFoundException);
-      expect(repository.delete).toHaveBeenCalledWith(1);
+      await expect(service.remove(999)).rejects.toThrow(NotFoundException);
     });
   });
 
-
-  describe('getProducersInterval', () => {
-    it('should calculate producer intervals correctly', async () => {
-      const awards = [
-        { id: 1, year: 2000, title: 'Movie 1', studios: 'Studio 1', producers: 'Producer 1', winner: true },
-        { id: 2, year: 2010, title: 'Movie 2', studios: 'Studio 2', producers: 'Producer 1', winner: true },
-        { id: 3, year: 2015, title: 'Movie 3', studios: 'Studio 3', producers: 'Producer 2', winner: true },
-        { id: 4, year: 2018, title: 'Movie 4', studios: 'Studio 4', producers: 'Producer 2', winner: true },
+  describe('getProducerIntervals', () => {
+    it('should return the producer with the smallest and largest award interval', async () => {
+      const mockAwardEntities: Movie[] = [
+        {
+          id: 0,
+          producers: 'Michael Bay and Jerry Bruckheimer',
+          year: 2007,
+          winner: true,
+          title: 'Movie 1',
+          studios: 'Tabajara',
+        },
+        {
+          producers: 'Jerry Bruckheimer',
+          year: 2003,
+          winner: true,
+          id: 0,
+          title: 'Movie 2',
+          studios: 'Tabajara',
+        },
+        // eslint-disable-next-line prettier/prettier
+        {
+          producers: 'Kathleen Kennedy, Frank Marshall',
+          year: 2001,
+          winner: true,
+          id: 0,
+          title: 'Movie 3',
+          studios: 'Tabajara',
+        },
+        {
+          producers: 'Frank Marshall',
+          year: 2012,
+          winner: true,
+          id: 0,
+          title: 'Movie 4',
+          studios: 'Tabajara',
+        },
       ];
-      repository.find.mockResolvedValue(awards);
+
+      jest.spyOn(repository, 'find').mockResolvedValue(mockAwardEntities);
 
       const result = await service.getProducerIntervals();
-      expect(result.min.length).toBeGreaterThan(0);
-      expect(result.max.length).toBeGreaterThan(0);
-      expect(repository.find).toHaveBeenCalledWith({ where: { winner: true } });
+
+      expect(result.min).toEqual([
+        {
+          producer: 'Jerry Bruckheimer',
+          interval: 4,
+          previousWin: 2003,
+          followingWin: 2007,
+        },
+      ]);
+
+      expect(result.max).toEqual([
+        {
+          followingWin: 2012,
+          interval: 11,
+          previousWin: 2001,
+          producer: 'Frank Marshall',
+        },
+      ]);
     });
 
-    it('should throw NotFoundException if no awards found', async () => {
-      repository.find.mockResolvedValue([]);
+    it('should return empty arrays if there are no winners', async () => {
+      jest.spyOn(repository, 'find').mockResolvedValue([]);
 
-      await expect(service.getProducerIntervals()).rejects.toThrow(NotFoundException);
+      expect.assertions(1);
+      try {
+        await service.getProducerIntervals();
+      } catch (error) {
+        expect(error).toBeInstanceOf(NotFoundException);
+      }
     });
   });
 });

@@ -82,7 +82,7 @@ export class AwardsService {
     for (const movie of winnersMovies) {
       // Dividir os produtores por vírgula e remover espaços extras
       const producersList = movie.producers
-        .split(',')
+        .split(/,|and/)
         .map((producer) => producer.trim());
 
       // Iterar sobre cada produtor e adicionar os anos de vitória no mapa
@@ -149,7 +149,7 @@ export class AwardsService {
 
   async remove(id: number): Promise<void> {
     const result = await this.moviesRepository.delete(id);
-    if (result.affected === 0) {
+    if (result === undefined || result.affected === 0) {
       throw new NotFoundException(`Award with ID ${id} not found`);
     }
   }
