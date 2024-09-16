@@ -33,10 +33,6 @@ describe('AwardsController integration tests', () => {
     );
   });
 
-  // afterAll(async () => {
-  //   await app.close();
-  // });
-
   it('/awards (POST) - should create a new award', async () => {
     const createAwardDto: CreateAwardDto = {
       producers: 'Jhon Miller',
