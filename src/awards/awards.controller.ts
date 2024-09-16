@@ -60,7 +60,7 @@ export class AwardsController {
   })
   @ApiResponse({ status: 404, description: 'Intervalo de prêmios não encontrado.' })
   @ApiResponse({ status: 500, description: 'Erro interno do servidor.' })
-  @Get('/producers')
+  @Get('/producers-interval')
   getProducers() {
     try {
       return this.awardsService.getProducerIntervals();

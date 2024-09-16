@@ -120,4 +120,29 @@ describe('AwardsController integration tests', () => {
     });
     expect(findDeleted).toBeNull();
   });
+
+  it('/producers-interval (GET) - should calculate producer intervals correctly', async () => {
+    const response = await request(app.getHttpServer())
+      .get(`/producers-interval`)
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      min: [
+        {
+          producer: 'Joel Silver',
+          interval: 1,
+          previousWin: 1990,
+          followingWin: 1991,
+        },
+      ],
+      max: [
+        {
+          producer: 'Matthew Vaughn',
+          interval: 13,
+          previousWin: 2002,
+          followingWin: 2015,
+        },
+      ],
+    });
+  });
 });
