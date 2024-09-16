@@ -58,10 +58,8 @@ src/
 │   ├── entities/
 │   │   └── movie.entity.ts
 │   └── tests/
-│       ├── mocks/
-│           └── repository.mock
 │       └── awards.integration.spec.ts // testes integrados
-        └── awards.service.spec.ts // testes unitários
+|       └── awards.service.spec.ts // testes unitários
 └── shared/
     └── movielist.csv
 ```
