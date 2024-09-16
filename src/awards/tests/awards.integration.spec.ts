@@ -33,9 +33,9 @@ describe('AwardsController integration tests', () => {
     );
   });
 
-  afterAll(async () => {
-    await app.close();
-  });
+  // afterAll(async () => {
+  //   await app.close();
+  // });
 
   it('/awards (POST) - should create a new award', async () => {
     const createAwardDto: CreateAwardDto = {
@@ -122,11 +122,44 @@ describe('AwardsController integration tests', () => {
   });
 
   it('/producers-interval (GET) - should calculate producer intervals correctly', async () => {
+    const movies: CreateAwardDto[] = [
+      {
+        producers: 'Joel Silver',
+        title: 'Movie 1',
+        studios: 'Studio 1',
+        year: 1990,
+        winner: true,
+      },
+      {
+        producers: 'Joel Silver',
+        title: 'Movie 2',
+        studios: 'Studio 2',
+        year: 1991,
+        winner: true,
+      },
+      {
+        producers: 'Matthew Vaughn',
+        title: 'Movie 3',
+        studios: 'Studio 3',
+        year: 2002,
+        winner: true,
+      },
+      {
+        producers: 'Matthew Vaughn',
+        title: 'Movie 4',
+        studios: 'Studio 4',
+        year: 2015,
+        winner: true,
+      },
+    ];
+
+    await movieRepository.save(movies);
+
     const response = await request(app.getHttpServer())
-      .get(`/producers-interval`)
+      .get(`/awards/producers-interval`)
       .expect(200);
 
-    expect(response.body).toMatchObject({
+    expect(response.body).toEqual({
       min: [
         {
           producer: 'Joel Silver',
