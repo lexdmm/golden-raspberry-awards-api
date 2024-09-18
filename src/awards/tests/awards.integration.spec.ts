@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
@@ -7,21 +8,23 @@ import { Repository } from 'typeorm';
 import { AwardsModule } from '../awards.module';
 import { Movie } from '../entity/movie.entity';
 import { CreateAwardDto } from '../dto/create-award.dto';
+import { AwardsService } from '../awards.service';
 
 describe('AwardsController integration tests', () => {
   let app: INestApplication;
+  let service: AwardsService;
   let movieRepository: Repository<Movie>;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [
-        AwardsModule,
         TypeOrmModule.forRoot({
           type: 'sqlite',
           database: ':memory:',
           entities: [Movie],
           synchronize: true,
         }),
+        AwardsModule,
       ],
     }).compile();
 
@@ -31,6 +34,7 @@ describe('AwardsController integration tests', () => {
     movieRepository = moduleFixture.get<Repository<Movie>>(
       getRepositoryToken(Movie),
     );
+    service = moduleFixture.get<AwardsService>(AwardsService);
   });
 
   it('/awards (POST) - should create a new award', async () => {
@@ -173,5 +177,35 @@ describe('AwardsController integration tests', () => {
         },
       ],
     });
+  });
+
+  it('/awards/producers-interval (GET) - should ensure that the data obtained is in accordance with the data by seed data provided in the proposal in csv', async () => {
+    await service.seedData();
+
+    const response = await request(app.getHttpServer())
+      .get('/awards/producers-interval')
+      .expect(200);
+
+    const expectedResponse = {
+      min: [
+        {
+          producer: 'Joel Silver',
+          interval: 1,
+          previousWin: 1990,
+          followingWin: 1991,
+        },
+      ],
+      max: [
+        {
+          producer: 'Matthew Vaughn',
+          interval: 13,
+          previousWin: 2002,
+          followingWin: 2015,
+        },
+      ],
+    };
+
+    // Compara a resposta da API com o retorno esperado
+    expect(response.body).toEqual(expectedResponse);
   });
 });
