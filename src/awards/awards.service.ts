@@ -82,7 +82,8 @@ export class AwardsService {
     for (const movie of winnersMovies) {
       // Dividir os produtores por vírgula e remover espaços extras
       const producersList = movie.producers
-        .split(/,|and/)
+        .split(/,|\s+and\s+/)
+        .filter(Boolean)
         .map((producer) => producer.trim());
 
       // Iterar sobre cada produtor e adicionar os anos de vitória no mapa
